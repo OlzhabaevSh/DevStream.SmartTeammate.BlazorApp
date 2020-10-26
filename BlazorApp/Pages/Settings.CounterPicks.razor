@@ -1,0 +1,129 @@
+﻿@page "/settings/counterpicks"
+@inject HeroesDataStore heroDataSource
+@using Plk.Blazor.DragDrop
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <NavLink href="Settings" Match="NavLinkMatch.All">
+                Settings
+            </NavLink>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Counter picks</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-8">
+
+        @if (heroCollection == null)
+        {
+            <p>hero collection is empty =(</p>
+        }
+        else
+        {
+            <div class="plk-flex">
+                <Dropzone Items="heroCollection" 
+                          Class="flex-container"
+                          Style="DragDropStyle.Custom"
+                          ItemWrapperClass="flex-item">
+                    <div>
+                        <img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/@(context.Key)_hphover.png?v=6033050"
+                             class="card-img-top"
+                             style="max-width: 70px"
+                             alt="@(context.Name)" />
+                    </div>
+                </Dropzone>>
+            </div>
+
+        }
+
+    </div>
+    <div class="col-4">
+
+        <div class="card">
+            <div class="card-header">
+                Selected hero (lol)
+            </div>
+            <div class="card-body">
+                <Dropzone Items="currentHero" MaxItems="1">
+                    <div>
+                        <img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/@(context.Key)_hphover.png?v=6033050"
+                             style="max-height:250px"/>
+                    </div>
+                </Dropzone>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="card">
+            <div class="card-header">
+                Counterpaties
+            </div>
+
+            <div class="card-body">
+                <Dropzone Items="counterpatyCollection">
+                    <div>
+                        <p>Key: @(context.HeroKey)</p>
+                        <p>Rating: @(context.Rating)</p>
+                    </div>
+                </Dropzone>
+            </div>
+
+            <div class="card-footer">
+                <button class="btn btn-primary btn-block">Save</button>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+
+@code {
+
+    HeroViewModel[] heroCollection = new List<HeroViewModel>().ToArray();
+
+    HeroViewModel heroSelected;
+
+    HeroViewModel[] currentHero = new List<HeroViewModel>().ToArray();
+
+    CounterpickViewModel[] counterpatyCollection = new List<CounterpickViewModel>().ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var heroes = await heroDataSource.GetFromStore();
+
+        heroCollection = heroes.Value.Data.Select(x => new HeroViewModel()
+        {
+            Key = x.Key,
+            Name = x.Name
+        }).ToArray();
+
+        counterpatyCollection = new List<CounterpickViewModel>()
+        {
+            new CounterpickViewModel() { HeroKey = "lion", Rating = 4 },
+            new CounterpickViewModel() { HeroKey = "zeus", Rating = 2 },
+            new CounterpickViewModel() { HeroKey = "bane", Rating = 3 }
+        }.ToArray();
+    }
+
+
+    class HeroViewModel
+    {
+        public string Key { get; set; }
+
+        public string Name { get; set; }
+
+        public Dictionary<int, CounterpickViewModel[]> Counterpicks { get; set; }
+    }
+
+    class CounterpickViewModel
+    {
+        public string HeroKey { get; set; }
+
+        public int Rating { get; set; }
+    }
+
+}

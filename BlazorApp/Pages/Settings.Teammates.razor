@@ -1,0 +1,97 @@
+﻿@page "/settings/teammates"
+@inject HeroesDataStore heroDataSource
+@inject HeroTeammatesDataSource heroTeammatesDataSource
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <NavLink href="Settings" Match="NavLinkMatch.All">
+                Settings
+            </NavLink>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Teammates</li>
+    </ol>
+</nav>
+
+<div>
+
+    <p>
+        Last update on: @(lastUpdateOn.HasValue ? lastUpdateOn.Value.ToShortDateString() : "empty")
+    </p>
+
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+
+        <div class="card">
+            <div class="card-header">
+                Heroes list
+            </div>
+            <div class="card-body">
+
+                <div></div>
+
+                <div class="row">
+
+                    @foreach (var heroItem in heroCollection)
+                    {
+                        <div class="col-1">
+                            <div class="card">
+                                <img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/@(heroItem.Key)_hphover.png?v=6033050"
+                                     class="card-img-top"
+                                     alt="...">
+                            </div>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    <div class="col-md-4">
+
+    </div>
+</div>
+
+@code {
+
+    private DateTime? lastUpdateOn;
+
+    private HeroViewModel[] heroCollection;
+
+    private HeroModel[] _heroes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //await LoadHeroes();
+        //await LoadTeammates();
+        var s = new Dictionary<char, int>();
+    }
+
+    private async Task LoadHeroes()
+    {
+        var data = await heroDataSource.GetFromStore();
+
+        _heroes = data.Value.Data;
+        lastUpdateOn = data.Value.LastUpdateAt;
+    }
+
+    private async Task LoadTeammates()
+    {
+        var data = await heroTeammatesDataSource.GetFromStore();
+
+
+    }
+
+    public class HeroViewModel
+    {
+        public string Key { get; set; }
+
+        public string Name { get; set; }
+
+        public bool IsEmpty { get; set; }
+    }
+
+}

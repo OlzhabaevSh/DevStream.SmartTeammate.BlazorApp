@@ -1,0 +1,242 @@
+﻿@page "/heroes"
+@inject HeroesDataStore heroesDataStore
+
+<div class="row">
+
+    
+    <div class="col-md-1">
+        <button class="btn btn-primary" 
+                @onclick="RefreshData">Refresh</button>
+    </div>
+
+    <div class="col-md-3">
+        <div class="input-group">
+            <input type="text" 
+                   class="form-control"
+                   placeholder="Write name"
+                   @bind="SearchValue" />
+
+            <div class="input-group-append">
+                <button class="btn btn-outline-secondary" 
+                        type="button" 
+                        @onclick="Search">Search</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="btn-group">
+            @if (Roles != null)
+            {
+                foreach (var role in Roles) 
+                {
+                    <button class="btn @(role.Value ? "btn-primary" : "btn-outline-primary")"
+                            type="button"
+                            @onclick="@(e => SelectRole(role.Key))">@role.Key</button>
+                }
+            }
+        </div>
+    </div>
+
+</div>
+
+<br />
+
+@if (HeroCollection == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!HeroCollection.Any()) 
+{
+    <p><em>Collection is empty</em></p>
+}
+else
+{
+    <div class="row">
+
+        <div class="col-8">
+
+            <div class="row no-gutters">
+
+                @foreach (var heroItem in HeroCollection)
+                {
+                    <div class="col-1" @onclick="@(e => SelectHero(heroItem))">
+                        <div class="card @((HeroSelected != null && heroItem.Key == HeroSelected.Key) ? "bg-primary" : "bg-light")">
+                            <img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/@(heroItem.Key)_hphover.png?v=6033050"
+                                 class="card-img-top @(heroItem.Visible ? "visible" : "invisible")"
+                                 alt="...">
+                        </div>
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+        <div class="col-4">
+
+            @if (HeroSelected == null)
+            {
+                <p><em>Please select hero</em></p>
+            }
+            else
+            {
+                <div class="card">
+                    <img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/@(HeroSelected.Key)_vert.jpg?v=6033050" 
+                         class="card-img-top" 
+                         alt="..."
+                         style="max-height:350px">
+                    <div class="card-body">
+                        <h5 class="card-title">@HeroSelected.Name</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">
+                            @foreach (var role in HeroSelected.Roles) 
+                            {
+                                <span>@role, </span>
+                            }
+                        </h6>
+                        <p class="card-text overflow-auto" style="max-height:250px">@HeroSelected.Bio</p>
+                    </div>
+                </div>
+            }
+
+
+
+        </div>
+
+    </div>
+
+    
+
+}
+
+@code {
+
+    public HeroViewModel[] HeroCollection;
+
+    public Dictionary<string, bool> Roles;
+
+    public string SearchValue;
+
+    public HeroViewModel HeroSelected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+    }
+
+    public async Task RefreshData()
+    {
+        HeroCollection = null;
+
+        // http://www.dota2.com/jsfeed/heropickerdata?v=6033050b6033050&l=english
+        // sample-data/HeroesList.json
+
+        
+        var storeIsEmpty = await heroesDataStore.IsStoreEmpty();
+
+        if (storeIsEmpty)
+        {
+            var loadedData = await heroesDataStore.DownloadFromService("sample-data/HeroesList.json");
+            await heroesDataStore.Write(loadedData);
+        }
+
+        var data = await heroesDataStore.GetFromStore();
+        
+        HeroCollection = data.Value.Data.Select(x => new HeroViewModel()
+        {
+            Key = x.Key,
+            Name = x.Name,
+            Bio = x.Bio,
+            Atk = x.Atk,
+            Roles = x.Roles,
+            ImageUrl = $"https://cdn.cloudflare.steamstatic.com/apps/dota2/images/heroes/{x.Key}_hphover.png?v=6033050",
+            Visible = true
+        })
+        .ToArray();
+
+        var roles = HeroCollection.SelectMany(x => x.Roles)
+            .Distinct()
+            .ToArray();
+
+        Roles = new Dictionary<string, bool>();
+
+        foreach (var item in roles)
+        {
+            Roles.Add(item, true);
+        } 
+
+    }
+
+    public void Search()
+    {
+        if (string.IsNullOrEmpty(SearchValue))
+        {
+            foreach (var item in HeroCollection)
+            {
+                item.Visible = true;
+            }
+        }
+        else
+        {
+            foreach (var item in HeroCollection)
+            {
+                if (item.Key.Contains(SearchValue))
+                {
+                    item.Visible = true;
+                }
+                else
+                {
+                    item.Visible = false;
+                }
+            }
+        }
+
+    }
+
+    public void SelectHero(HeroViewModel hero)
+    {
+        HeroSelected = hero;
+    }
+
+    public void SelectRole(string role)
+    {
+        var item = Roles[role];
+
+        Roles[role] = !item;
+
+        var activeRoles = Roles.Where(x => x.Value)
+            .Select(x => x.Key)
+            .ToList();
+
+        foreach (var hero in HeroCollection)
+        {
+            if (activeRoles.Intersect(hero.Roles).Any())
+            {
+                hero.Visible = true;
+            }
+            else
+            {
+                hero.Visible = false;
+            }
+        }
+
+    }
+
+    public class HeroViewModel
+    {
+        public string Key { get; set; }
+
+        public string Name { get; set; }
+
+        public string Bio { get; set; }
+
+        public string Atk { get; set; }
+
+        public string[] Roles { get; set; }
+
+        public string ImageUrl { get; set; }
+
+        public bool Visible { get; set; }
+    }
+
+}
